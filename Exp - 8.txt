@@ -1,0 +1,378 @@
+﻿Exp - 8
+MASTER (54.227.16.190)
+Contains:
+* Jenkins
+* Maven
+* Ansible
+Hostname:
+ip-172-31-17-32
+
+
+________________
+
+
+NODE (18.209.7.208)
+Contains:
+* Java only
+Hostname:
+ip-172-31-23-33
+
+
+________________
+
+
+PART 1 : MASTER MACHINE SETUP
+Everything in PART 1 is done ONLY on MASTER.
+Verify:
+hostname
+
+
+Must show:
+ip-172-31-17-32
+
+
+________________
+
+
+STEP 1 : Install Java
+MASTER
+sudo apt update
+
+
+sudo apt install openjdk-21-jdk -y
+
+
+java -version
+
+
+________________
+
+
+STEP 2 : Install Maven
+MASTER
+wget https://archive.apache.org/dist/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz
+
+
+sudo tar -xzf apache-maven-3.9.6-bin.tar.gz -C /opt/
+
+
+echo 'export PATH=/opt/apache-maven-3.9.6/bin:$PATH' | sudo tee /etc/profile.d/maven.sh
+
+
+source /etc/profile.d/maven.sh
+
+
+mvn -version
+
+
+________________
+
+
+STEP 3 : Install Ansible
+MASTER
+sudo apt install ansible -y
+
+
+ansible --version
+
+
+________________
+
+
+STEP 4 : Install Jenkins
+MASTER
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+
+
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
+https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+/etc/apt/sources.list.d/jenkins.list >/dev/null
+
+
+sudo apt update
+
+
+sudo apt install fontconfig openjdk-21-jre -y
+
+
+sudo apt install jenkins -y
+
+
+Start Jenkins:
+sudo systemctl enable jenkins
+
+
+sudo systemctl start jenkins
+
+
+systemctl status jenkins
+
+
+Password:
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+
+________________
+
+
+STEP 5 : Security Group
+MASTER
+Allow
+Type
+	Port
+	Custom TCP
+	8080
+	Then open:
+http://54.227.16.190:8080
+
+
+________________
+
+
+PART 2 : NODE SETUP
+SSH to NODE
+Verify:
+hostname
+
+
+Should show:
+ip-172-31-23-33
+
+
+________________
+
+
+STEP 6 : Install Java
+NODE
+sudo apt update
+
+
+sudo apt install openjdk-21-jdk -y
+
+
+java -version
+
+
+________________
+
+
+PART 3 : CREATE JENKINS SSH KEYS
+Go back to MASTER.
+DO NOT run ssh-keygen as ubuntu.
+Run:
+sudo mkdir -p /var/lib/jenkins/.ssh
+
+
+sudo chown jenkins:jenkins /var/lib/jenkins/.ssh
+
+
+sudo -u jenkins ssh-keygen -t ed25519
+
+
+Press Enter three times.
+Verify:
+sudo ls -l /var/lib/jenkins/.ssh
+
+
+You should see:
+id_ed25519
+id_ed25519.pub
+
+
+________________
+
+
+PART 4 : COPY PUBLIC KEY TO NODE
+MASTER
+Show public key:
+sudo cat /var/lib/jenkins/.ssh/id_ed25519.pub
+
+
+Copy entire line.
+________________
+
+
+NODE
+mkdir -p ~/.ssh
+
+
+nano ~/.ssh/authorized_keys
+
+
+Paste key.
+Save:
+CTRL+O
+ENTER
+CTRL+X
+
+
+Fix permissions:
+chmod 700 ~/.ssh
+
+
+chmod 600 ~/.ssh/authorized_keys
+
+
+________________
+
+
+PART 5 : TEST SSH
+MASTER
+sudo -u jenkins ssh ubuntu@18.209.7.208
+
+
+You should enter:
+ubuntu@ip-172-31-23-33
+
+
+Exit:
+exit
+
+
+________________
+
+
+PART 6 : INVENTORY FILE
+MASTER
+Create:
+sudo nano /var/lib/jenkins/inventory.ini
+
+
+Contents:
+[webserver]
+18.209.7.208 ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/.ssh/id_ed25519 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+
+Ownership:
+sudo chown jenkins:jenkins /var/lib/jenkins/inventory.ini
+
+
+________________
+
+
+PART 7 : PLAYBOOK
+MASTER
+Create:
+sudo nano /var/lib/jenkins/deploy.yml
+
+
+Example:
+---
+- name: Deploy App
+  hosts: webserver
+
+
+  tasks:
+
+
+    - name: Stop old app
+      shell: pkill -f app.jar || true
+
+
+    - name: Copy jar
+      copy:
+        src: /var/lib/jenkins/workspace/Java-App/target/*.jar
+        dest: /home/ubuntu/app.jar
+        mode: '0755'
+
+
+    - name: Start app
+      shell: nohup java -jar /home/ubuntu/app.jar > /home/ubuntu/app.log 2>&1 &
+
+
+Ownership:
+sudo chown jenkins:jenkins /var/lib/jenkins/deploy.yml
+
+
+________________
+
+
+PART 8 : TEST ANSIBLE
+MASTER
+Always run as Jenkins:
+sudo -u jenkins ansible -i /var/lib/jenkins/inventory.ini webserver -m ping
+
+
+Expected:
+SUCCESS
+ping : pong
+
+
+________________
+
+
+PART 9 : TEST PLAYBOOK
+MASTER
+sudo -u jenkins ansible-playbook -i /var/lib/jenkins/inventory.ini /var/lib/jenkins/deploy.yml
+
+
+________________
+
+
+PART 10 : JENKINS PLUGINS
+Install:
+* Maven Integration
+* Git
+* Pipeline
+* SSH Agent (optional)
+* Ansible
+________________
+
+
+PART 11 : TOOLS
+Manage Jenkins → Tools
+Maven
+Name : Maven3.9.6
+Home : /opt/apache-maven-3.9.6
+
+
+________________
+
+
+PART 12 : CREATE FREESTYLE JOB
+Source:
+https://github.com/mvsanthi123/simple-java-maven-app.git
+
+
+________________
+
+
+Build Step 1
+Invoke top-level Maven targets
+Goals:
+clean package
+
+
+________________
+
+
+Build Step 2
+Execute shell
+sudo -u jenkins ansible-playbook -i /var/lib/jenkins/inventory.ini /var/lib/jenkins/deploy.yml
+
+
+________________
+
+
+Execution Flow
+GitHub
+    ↓
+Jenkins
+    ↓
+Maven Build
+    ↓
+target/app.jar
+    ↓
+Ansible
+    ↓
+SSH using Jenkins key
+    ↓
+Node
+    ↓
+Copy app.jar
+    ↓
+Run app
+
+
+This is the exact sequence I would follow if I had to rebuild everything from zero.
