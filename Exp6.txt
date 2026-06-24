@@ -1,0 +1,168 @@
+﻿Experiment 6: Continuous Integration with Jenkins — Full Guide (Windows Laptop + AWS Ubuntu Server)
+Goal
+Set up Jenkins on AWS, connect it to GitHub, and have it auto-build a Java project using Maven — producing a JAR file with zero manual building after setup.
+Flow: GitHub code → Jenkins pulls it → Maven builds + tests → JAR file created
+Before You Start
+* AWS account ready (use region ap-south-1 / Mumbai for India — check top-right corner of console)
+* Windows laptop with Git Bash installed (https://git-scm.com/download/win) — used for SSH
+* Stable internet + Chrome/Edge browser
+* Set a billing alarm in AWS (Billing → Budgets) to avoid surprise charges
+* Always Stop/Terminate your EC2 instance after the lab to stay in free tier (750 hrs/month for one t2.micro)
+________________
+
+
+________________
+PART 1: Create the AWS EC2 Instance
+Step 1 — Launch Instance
+* EC2 → Launch Instance
+* Name: Jenkins-CI-Server
+* AMI: Ubuntu Server 22.04 LTS (Free tier eligible)
+* Instance type: t2.micro
+* Key pair: Create new → name jenkins-key → type RSA → format .pem → download and save it safely (e.g., to Downloads)
+* Network settings: check Allow SSH traffic + Allow HTTP traffic
+* Click Launch Instance, wait till status = Running
+Step 2 — Connect via SSH (Windows version)
+* Copy the instance's Public IPv4 address
+* Open Git Bash (search for it in Start menu — not Command Prompt, not PowerShell)
+cd ~/Downloads
+chmod 400 jenkins-key.pem
+ssh -i jenkins-key.pem ubuntu@YOUR_PUBLIC_IP
+
+
+* Type yes when prompted
+* You're now inside the server (prompt changes to ubuntu@ip-...)
+Alternative if Git Bash isn't available: use PowerShell with icacls.exe jenkins-key.pem /inheritance:r and icacls.exe jenkins-key.pem /grant:r "$($env:USERNAME):(R)" before running the same ssh command.
+________________
+
+
+________________
+PART 2: Install Java and Jenkins (runs ON the Ubuntu server — same for everyone)
+Step 3 — Update System
+sudo apt update
+sudo apt upgrade -y
+
+
+Step 4 — Install Java
+sudo apt install -y openjdk-21-jdk
+java -version
+
+
+Step 5 — Install Jenkins
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+
+
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+
+sudo apt update
+sudo apt install jenkins -y
+
+
+Step 6 — Start Jenkins
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+sudo systemctl status jenkins
+
+
+Look for active (running) in green. Press q to exit.
+________________
+
+
+________________
+PART 3: Open Jenkins in Browser (on your Windows laptop)
+Step 7 — Open Port 8080 in AWS
+* EC2 → your instance → Security tab → click Security Group → Edit inbound rules → Add rule:
+   * Type: Custom TCP, Port: 8080, Source: Anywhere-IPv4 (0.0.0.0/0)
+* Save rules
+Step 8 — Access Jenkins
+* Open Chrome/Edge on your Windows laptop: http://YOUR_PUBLIC_IP:8080
+* "Unlock Jenkins" page appears
+Step 9 — Get Initial Admin Password Back in Git Bash (still connected via SSH):
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+
+Copy and paste into the browser field → Continue
+Step 10 — Finish Setup
+* "Install suggested plugins" → wait for it to finish
+* Create admin user (username/password/email)
+* Save and Continue → Save and Finish → Start using Jenkins
+* You'll land on the Jenkins Dashboard
+________________
+
+
+________________
+PART 4: Install Maven and Configure Jenkins
+Step 11 — Install Maven on Server (in Git Bash, still SSH'd in)
+wget https://archive.apache.org/dist/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz
+sudo tar -xvf apache-maven-3.9.6-bin.tar.gz -C /opt
+sudo ln -sfn /opt/apache-maven-3.9.6 /opt/maven
+echo 'export PATH=/opt/maven/bin:$PATH' | sudo tee /etc/profile.d/maven.sh
+source /etc/profile.d/maven.sh
+mvn -version
+
+
+Step 12 — Install Maven Integration Plugin in Jenkins
+* Manage Jenkins → Plugins → Available plugins
+* Search "Maven Integration" → check box → Install
+Step 13 — Tell Jenkins Where Maven Is
+* Manage Jenkins → Tools → Maven section → Add Maven
+   * Name: Maven-3.9.6
+   * UNCHECK "Install automatically"
+   * MAVEN_HOME: /opt/apache-maven-3.9.6
+* Save
+________________
+
+
+________________
+PART 5: Create the CI Job
+Step 14 — New Freestyle Project
+* Dashboard → New Item → name: MyMavenCIJob → select Freestyle project → OK
+Step 15 — Set Git Repo
+* Source Code Management → Git
+* Repository URL: https://github.com/mvsanthi123/simple-java-maven-app.git
+* Branch Specifier: */master (try */main if it errors later)
+Step 16 — Build Step
+* Add build step → Invoke top-level Maven targets
+* Maven Version: Maven-3.9.6
+* Goals: clean install
+Step 17 — Save and Build
+* Save → Build Now → click the build number → Console Output
+* Success ends with: BUILD SUCCESS
+Step 18 — Verify the JAR In Git Bash (still SSH'd in):
+sudo su - jenkins
+cd /var/lib/jenkins/workspace/MyMavenCIJob/target/
+Ls
+
+
+cd /var/lib/jenkins/workspace
+Ls
+ cd /var/lib/jenkins/workspace/hello
+Ls target
+Cd target
+ java -jar my-app-1.0-SNAPSHOT.jar
+
+
+  
+
+
+
+  
+You should see a .jar file (e.g., my-app-1.0-SNAPSHOT.jar). Type exit when done.
+________________
+
+
+________________
+What the Examiner Checks
+* Jenkins dashboard loads at http://YOUR_IP:8080
+* Job "MyMavenCIJob" shows Last build: Success (blue circle)
+* Console output shows BUILD SUCCESS
+* A .jar file exists in target/ folder
+Key Points to Remember
+* Jenkins port: 8080
+* Java required version: 21+
+* Jenkins key file (2026): jenkins.io-2026.key — using an older key gives a NO_PUBKEY error
+* "clean install" = clean old build files + compile/test/package into JAR
+* "Install automatically" for Maven in Jenkins must be unchecked if pointing to a manual install
+* On Windows: use Git Bash for SSH + chmod, everything after connecting is identical to Mac/Linux
+Cleanup
+AWS EC2 → select instance → Instance State → Terminate (stops charges).
