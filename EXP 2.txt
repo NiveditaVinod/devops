@@ -1,0 +1,491 @@
+﻿EXP 2
+
+
+To generate the JAR file, these are the exact commands you executed and the inputs you provided.
+1) sudo yum update -y
+
+
+2) sudo yum install java-17-amazon-corretto -y
+
+
+3) java -version
+
+
+Install Maven
+
+
+4) sudo dnf install -y java-1.8.0-amazon-corretto
+
+
+5) sudo yum install maven -y
+
+
+6) mvn -version
+
+
+1. Verify Java
+java -version
+
+
+________________
+
+
+2. Verify Maven
+mvn -version
+
+
+________________
+
+
+3. Create Maven Project
+mvn archetype:generate
+
+
+Inputs given during project creation
+You selected:
+2349
+
+
+(Your system's number for maven-archetype-quickstart)
+Then:
+9
+
+
+(Version 1.5)
+Then entered:
+groupId = group1
+artifactId = artifact1
+version = 1.0-SNAPSHOT
+package = package1
+
+
+Finally:
+Y
+
+
+to confirm.
+________________
+
+
+4. Check Created Project
+ls
+
+
+Output:
+artifact1
+
+
+Move into project:
+cd artifact1
+
+
+Check contents:
+ls
+
+
+Output:
+pom.xml
+src
+
+
+________________
+
+
+5. View POM File
+cat pom.xml
+
+
+Important values generated:
+<groupId>group1</groupId>
+<artifactId>artifact1</artifactId>
+<version>1.0-SNAPSHOT</version>
+
+
+________________
+
+
+6. Build and Generate JAR
+mvn clean install package
+
+
+This command:
+* Cleans old build files
+* Compiles Java code
+* Runs tests
+* Creates JAR file
+* Installs JAR into local Maven repository
+Output ended with:
+BUILD SUCCESS
+
+
+________________
+
+
+7. Verify JAR File
+ls
+
+
+You should see:
+pom.xml
+src
+target
+
+
+Move into target folder:
+cd target
+
+
+List files:
+ls
+
+
+You should see:
+artifact1-1.0-SNAPSHOT.jar
+classes
+generated-sources
+generated-test-sources
+maven-status
+surefire-reports
+test-classes
+
+
+________________
+
+
+Final JAR File
+artifact1/target/artifact1-1.0-SNAPSHOT.jar
+
+
+________________
+
+
+Complete Command Sequence
+java -version
+
+
+mvn -version
+
+
+mvn archetype:generate
+
+
+ls
+
+
+cd artifact1
+
+
+ls
+
+
+cat pom.xml
+
+
+mvn clean install package
+
+
+ls
+
+
+cd target
+
+
+ls
+
+
+Changes/Inputs you provided
+Property
+	Value
+	groupId
+	group1
+	artifactId
+	artifact1
+	version
+	1.0-SNAPSHOT
+	package
+	package1
+	archetype
+	maven-archetype-quickstart
+	archetype version
+	1.5
+	These are the only inputs needed to successfully generate the JAR file.
+You can submit the experiment with the following corrected procedure, including the issue you faced and the fix applied.
+Experiment 3: Working with Gradle
+Aim
+To install Gradle, create a Gradle Java project, build, run, test, and manage dependencies using Gradle.
+________________
+
+
+Step 1: Launch EC2 Instance
+1. Login to AWS Console.
+2. Go to EC2 Dashboard.
+3. Click Launch Instance.
+4. Name: Gradle
+5. AMI: Ubuntu Server
+6. Instance Type: t2.micro
+7. Launch and connect using SSH.
+ssh -i key.pem ubuntu@<PUBLIC_IP>
+
+
+________________
+
+
+Step 2: Install Java
+Update packages:
+sudo apt update
+
+
+Install Java:
+sudo apt install -y openjdk-17-jdk
+
+
+Verify:
+java -version
+
+
+Output:
+openjdk version "17.x.x"
+
+
+________________
+
+
+Step 3: Install Gradle
+Install unzip:
+sudo apt install unzip -y
+
+
+Download Gradle:
+wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
+
+
+Create Gradle directory:
+sudo mkdir /opt/gradle
+
+
+Extract Gradle:
+sudo unzip -d /opt/gradle gradle-8.5-bin.zip
+
+
+Verify extraction:
+ls /opt/gradle
+
+
+Output:
+gradle-8.5
+
+
+________________
+
+
+Issue Faced
+Command Used
+echo "export PATH=/opt/gradle/gradle-8.5/bin:\$PATH" | sudo tee -a /etc/profile.d/gradle.sh
+
+
+Error
+-bash: /etc/profile.d/gradle.sh: No such file or directory
+
+
+Reason
+The environment file could not be created, so Gradle was not added to the system PATH.
+When executing:
+gradle -v
+
+
+Error appeared:
+gradle: command not found
+
+
+________________
+
+
+Fix Applied
+Temporarily added Gradle to PATH:
+export PATH=/opt/gradle/gradle-8.5/bin:$PATH
+
+
+Verify:
+gradle -v
+
+
+Output:
+Welcome to Gradle 8.5!
+
+
+Gradle 8.5
+JVM: 17
+OS: Linux
+
+
+This confirmed Gradle installation was successful.
+________________
+
+
+Step 4: Create Gradle Project
+Create directory:
+mkdir my-gradle-project
+cd my-gradle-project
+
+
+Initialize project:
+gradle init
+
+
+________________
+
+
+Step 5: Select Project Options
+Choose:
+Project Type           : Application (2)
+Language               : Java (3)
+Multi Project          : No
+Build Script DSL       : Groovy (2)
+Test Framework         : JUnit Jupiter (4)
+Project Name           : gradle-demo
+Package Name           : com.myapp
+Java Version           : 17
+Generate New APIs      : No
+
+
+________________
+
+
+Step 6: Verify Project Structure
+ls
+
+
+Expected:
+app
+gradle
+gradlew
+gradlew.bat
+settings.gradle
+
+
+________________
+
+
+Step 7: Build Project
+gradle build
+
+
+Output:
+BUILD SUCCESSFUL
+
+
+________________
+
+
+Step 8: Run Application
+gradle run
+
+
+Output:
+Hello World!
+
+
+________________
+
+
+Step 9: Execute Tests
+gradle test
+
+
+Output:
+BUILD SUCCESSFUL
+
+
+________________
+
+
+Step 10: Display Available Tasks
+gradle tasks
+
+
+Shows:
+build
+run
+test
+clean
+assemble
+jar
+
+
+________________
+
+
+Step 11: Display Dependencies
+gradle dependencies
+
+
+Displays complete dependency tree.
+________________
+
+
+Step 12: Locate Generated JAR
+find . -name "*.jar"
+
+
+Output:
+app/build/libs/app.jar
+
+
+________________
+
+
+Step 13: Execute JAR
+java -jar app/build/libs/app.jar
+
+
+Output:
+Hello World!
+
+
+________________
+
+
+Commands Used
+sudo apt update
+sudo apt install -y openjdk-17-jdk
+java -version
+
+
+sudo apt install unzip -y
+wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
+sudo mkdir /opt/gradle
+sudo unzip -d /opt/gradle gradle-8.5-bin.zip
+
+
+ls /opt/gradle
+
+
+export PATH=/opt/gradle/gradle-8.5/bin:$PATH
+
+
+gradle -v
+
+
+mkdir my-gradle-project
+cd my-gradle-project
+
+
+gradle init
+
+
+gradle build
+gradle run
+gradle test
+gradle tasks
+gradle dependencies
+
+
+find . -name "*.jar"
+java -jar app/build/libs/app.jar
+
+
+Special note for your record: During installation, /etc/profile.d/gradle.sh could not be created, so Gradle was added manually using:
+export PATH=/opt/gradle/gradle-8.5/bin:$PATH
+
+
+After this change, gradle -v worked successfully and the experiment proceeded normally.
